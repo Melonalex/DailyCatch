@@ -1,0 +1,3 @@
+# The host timezone must be Asia/Shanghai (timedatectl set-timezone Asia/Shanghai).
+# Create the log directory first: sudo mkdir -p /var/log/dailycatch
+0 7 * * * cd /opt/dailycatch/dailycatch && /opt/dailycatch/dailycatch/.venv/bin/python -m fetcher.main >> /var/log/dailycatch/fetcher.log 2>&1

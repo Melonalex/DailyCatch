@@ -1,0 +1,191 @@
+# DailyCatch
+
+Private, single-user English study page. A morning job collects the Hacker News front page and the English RSS feeds listed in `.env`, then asks DeepSeek for one short article plus up to three hot topics grounded in those items. A React page shows the article first. Hot topics sit in a submenu under the date.
+
+There is no application login. Put the site behind nginx basic auth. It is meant to be opened as `http://SERVER_IP:PORT`.
+
+## Layout
+
+- `dailycatch/` — fetcher CLI and FastAPI app
+- `dailycatch-ui/` — React single page
+- `deploy/` — nginx, cron, and systemd examples
+- `schema.sql` — applied automatically when the fetcher or API starts
+
+Run Python commands from the `dailycatch` directory so `fetcher`, `api`, and `common` import cleanly.
+
+## Local development (Windows)
+
+Requirements: Python 3.11+, Node.js 18+, and MySQL 8.
+
+### 1. MySQL
+
+Create an empty database and a user that can create tables in it:
+
+```sql
+CREATE DATABASE dailycatch CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'dailycatch'@'localhost' IDENTIFIED BY 'change-me';
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, INDEX, ALTER
+  ON dailycatch.* TO 'dailycatch'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Docker Desktop is enough when MySQL is not installed. Start Docker, then:
+
+```powershell
+docker run -d --name dailycatch-mysql --restart unless-stopped `
+  -e MYSQL_ROOT_PASSWORD=change-me `
+  -e MYSQL_DATABASE=dailycatch `
+  -e MYSQL_USER=dailycatch `
+  -e MYSQL_PASSWORD=change-me `
+  -p 3306:3306 `
+  -v dailycatch-mysql:/var/lib/mysql `
+  mysql:8 `
+  --character-set-server=utf8mb4 `
+  --collation-server=utf8mb4_unicode_ci
+```
+
+### 2. Configuration
+
+```powershell
+cd dailycatch
+Copy-Item .env.example .env
+```
+
+Fill in `.env`. Never commit it.
+
+| Variable | Purpose |
+|---|---|
+| `DEEPSEEK_API_KEY` | DeepSeek key. Leave empty to store rows without AI fields. |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection |
+| `RSS_FEEDS` | Comma-separated `Name\|url` entries |
+
+The default feeds are BBC World and The Guardian Tech. The fetcher keeps 10 Hacker News stories that have a URL, and up to 5 entries per feed from the last 48 hours.
+
+### 3. Fetcher
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements.txt
+.\.venv\Scripts\python -m fetcher.main --no-ai
+.\.venv\Scripts\python -m fetcher.main
+```
+
+`--date YYYY-MM-DD` selects a digest date. The default is today in Asia/Shanghai. `--no-ai` skips DeepSeek and works with no API key.
+
+The run deletes that date's news rows first, then inserts each item in its own transaction. One DeepSeek call then writes the short article and hot topics. The article type rotates across IELTS 6.5-7.5, everyday English, technology, and a news brief, and the same date keeps its type when the job is run again. A failed model call keeps the previous lesson. The process prints `stored hackernews=N rss=N lesson=ok|failed|skipped hot_topics=N`. Exit code 0 means at least one news row was stored. Exit code 1 means nothing was stored.
+
+Running the same date again replaces those rows. It does not create duplicates.
+
+### 4. API
+
+```powershell
+.\.venv\Scripts\python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
+
+- `GET /api/health` → `{"status":"ok"}`
+- `GET /api/dates` → digest dates, newest first
+- `GET /api/digests/YYYY-MM-DD` → `{"date","items"}`, or 404 when that date is empty
+
+There is no CORS and no application auth. The API is read-only.
+
+### 5. Web UI
+
+```powershell
+cd ..\dailycatch-ui
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. The dev server proxies `/api` to `127.0.0.1:8000`. The latest date opens on the short article. Hot topics are listed under that date. Show Translation and Show Vocabulary reveal the Chinese gloss for the article.
+
+## Deploy on a server
+
+These steps assume a Linux host with Python 3.11+, Node.js 18+, MySQL 8, and nginx. The clock should be Asia/Shanghai so the 07:00 cron line matches the digest date.
+
+### 1. Packages and database
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip nginx apache2-utils
+sudo timedatectl set-timezone Asia/Shanghai
+```
+
+Create the database and user with the SQL in the local-development section. Use a real password.
+
+### 2. Application
+
+```bash
+sudo mkdir -p /opt/dailycatch /var/log/dailycatch
+sudo rsync -a --exclude .venv --exclude node_modules --exclude dist ./ /opt/dailycatch/
+cd /opt/dailycatch/dailycatch
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp .env.example .env
+# edit .env: database password and DEEPSEEK_API_KEY
+.venv/bin/python -m fetcher.main --no-ai
+.venv/bin/python -m fetcher.main
+```
+
+### 3. API service
+
+```bash
+sudo cp /opt/dailycatch/deploy/dailycatch-api.service /etc/systemd/system/dailycatch-api.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now dailycatch-api
+curl -s http://127.0.0.1:8000/api/health
+```
+
+The unit listens on `127.0.0.1:8000` only. The app reads `/opt/dailycatch/dailycatch/.env` itself.
+
+### 4. Frontend build
+
+```bash
+cd /opt/dailycatch/dailycatch-ui
+npm install
+npm run build
+```
+
+nginx serves `dailycatch-ui/dist`.
+
+### 5. Basic auth and nginx
+
+```bash
+sudo htpasswd -c /etc/nginx/.htpasswd-dailycatch reader
+sudo cp /opt/dailycatch/deploy/nginx.conf /etc/nginx/sites-available/dailycatch
+sudo ln -s /etc/nginx/sites-available/dailycatch /etc/nginx/sites-enabled/dailycatch
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+`deploy/nginx.conf` listens on port 8080, serves the built page, proxies `/api/` to `127.0.0.1:8000`, and requires the htpasswd user. Change the `listen` port, `root`, or htpasswd path if this host uses different ones. Remove any default site that also binds the public port you chose.
+
+Open `http://SERVER_IP:8080` and sign in with the htpasswd user. Check:
+
+```bash
+curl -s -u reader http://127.0.0.1:8080/api/health
+curl -s -u reader http://127.0.0.1:8080/api/dates
+```
+
+### 6. Morning job
+
+```bash
+sudo mkdir -p /var/log/dailycatch
+crontab -e
+```
+
+Paste the line from `deploy/crontab.example`. It runs at 07:00 and appends stdout and stderr to `/var/log/dailycatch/fetcher.log`. A partial fetch still exits 0 when at least one item was stored, so cron does not mail on a single failed source. Exit code 1 (nothing stored) is the failure signal.
+
+## Check for non-English source text
+
+From the repository root, excluding dependencies:
+
+```bash
+grep -rP "[\x{4e00}-\x{9fff}]" . \
+  --exclude-dir=node_modules \
+  --exclude-dir=dist \
+  --exclude-dir=.venv \
+  --exclude-dir=venv \
+  --exclude-dir=__pycache__
+```
+
+The command should print nothing.

@@ -1,0 +1,12 @@
+[Unit]
+Description=DailyCatch read-only API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/dailycatch/dailycatch
+ExecStart=/opt/dailycatch/dailycatch/.venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
