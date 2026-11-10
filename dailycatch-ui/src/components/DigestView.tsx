@@ -160,9 +160,7 @@ export function DigestView({ digest, pane }: DigestViewProps) {
               showTranslation={showTranslation}
               showVocabulary={showVocabulary}
               picked={pickedWord}
-              activeParagraph={detail?.kind === "paragraph" ? detail.index : null}
               onPick={(word, anchor) => placePop(word, anchor)}
-              onParagraph={(index) => setDetail({ kind: "paragraph", index })}
             />
           )}
         </div>
@@ -222,17 +220,13 @@ function ArticleView({
   showTranslation,
   showVocabulary,
   picked,
-  activeParagraph,
   onPick,
-  onParagraph,
 }: {
   lesson: Lesson | null;
   showTranslation: boolean;
   showVocabulary: boolean;
   picked: string | null;
-  activeParagraph: number | null;
   onPick: (word: string | null, anchor?: DOMRect) => void;
-  onParagraph: (index: number) => void;
 }) {
   const vocab = useMemo(() => indexVocabulary(lesson?.vocabulary ?? []), [lesson]);
   if (!lesson) {
@@ -248,13 +242,9 @@ function ArticleView({
         <span>{words} words</span>
       </p>
       <h2>{lesson.title}</h2>
-      <p className="hint">Click a highlighted word, or click a paragraph to open it.</p>
+      <p className="hint">Click a highlighted word.</p>
       {lesson.paragraphs.map((paragraph, index) => (
-        <div
-          className={activeParagraph === index ? "paragraph-block active" : "paragraph-block"}
-          key={paragraph}
-          onClick={() => onParagraph(index)}
-        >
+        <div className="paragraph-block" key={paragraph}>
           <p className="paragraph">
             {renderWords(paragraph, vocab, picked, onPick)}
           </p>

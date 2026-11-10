@@ -1,6 +1,6 @@
 # DailyCatch
 
-Private, single-user English study page. A morning job collects the Hacker News front page and the English RSS feeds listed in `.env`, then asks DeepSeek for one short article plus up to three hot topics grounded in those items. A React page shows the article first. Hot topics sit in a submenu under the date.
+Private, single-user English study page. A morning job collects the Hacker News front page and the English RSS feeds listed in `.env`, then asks DeepSeek for one medium-short story, or a reported account on news days, plus up to three hot topics grounded in those items. A React page shows the article first. Hot topics sit in a submenu under the date.
 
 There is no application login. Put the site behind nginx basic auth. It is meant to be opened as `http://SERVER_IP:PORT`.
 
@@ -72,7 +72,7 @@ python -m venv .venv
 
 `--date YYYY-MM-DD` selects a digest date. The default is today in Asia/Shanghai. `--no-ai` skips DeepSeek and works with no API key.
 
-The run deletes that date's news rows first, then inserts each item in its own transaction. One DeepSeek call then writes the short article and hot topics. The article type rotates across IELTS 6.5-7.5, everyday English, technology, and a news brief, and the same date keeps its type when the job is run again. A failed model call keeps the previous lesson. The process prints `stored hackernews=N rss=N lesson=ok|failed|skipped hot_topics=N`. Exit code 0 means at least one news row was stored. Exit code 1 means nothing was stored.
+The run deletes that date's news rows first, then inserts each item in its own transaction. One DeepSeek call then writes the medium-short piece and hot topics. The article type rotates across IELTS 6.5-7.5, everyday English, technology, and a news brief, and the same date keeps its type when the job is run again. A failed model call keeps the previous lesson. The process prints `stored hackernews=N rss=N lesson=ok|failed|skipped hot_topics=N`. Exit code 0 means at least one news row was stored. Exit code 1 means nothing was stored.
 
 Running the same date again replaces those rows. It does not create duplicates.
 
@@ -83,7 +83,7 @@ Running the same date again replaces those rows. It does not create duplicates.
 ```
 
 - `GET /api/health` → `{"status":"ok"}`
-- `GET /api/dates` → digest dates, newest first
+- `GET /api/dates` → issues newest first, each with `date`, `title`, `article_type`, `difficulty`, and `topic`
 - `GET /api/digests/YYYY-MM-DD` → `{"date","items"}`, or 404 when that date is empty
 
 There is no CORS and no application auth. The API is read-only.
@@ -96,7 +96,7 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. The dev server proxies `/api` to `127.0.0.1:8000`. The latest date opens on the short article. Hot topics are listed under that date. Show Translation and Show Vocabulary reveal the Chinese gloss for the article.
+Open `http://127.0.0.1:5173`. The dev server proxies `/api` to `127.0.0.1:8000`. The latest date opens on that piece. Hot topics are listed under that date. Show Translation and Show Vocabulary reveal the Chinese gloss for the article.
 
 ## Deploy on a server
 

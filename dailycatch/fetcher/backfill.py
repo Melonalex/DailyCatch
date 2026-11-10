@@ -71,11 +71,11 @@ def main(argv: list[str] | None = None) -> int:
         ensure_schema(connection)
         day = start
         while day <= end:
-            if _lesson_exists(connection, day):
+            if _lesson_exists(connection, day) and not args.replace:
                 logger.info("Skip %s; lesson already stored", day.isoformat())
                 skipped += 1
             else:
-                ok = _fill_day(connection, day, settings.deepseek_api_key)
+                ok = _fill_day(connection, day, settings.deepseek_api_key, replace=args.replace)
                 if ok:
                     saved += 1
                     time.sleep(DEEPSEEK_PAUSE_SECONDS)
@@ -109,7 +109,7 @@ def assignment_for_day(day: date) -> dict:
     }
 
 
-def _fill_day(connection, day: date, api_key: str) -> bool:
+def _fill_day(connection, day: date, api_key: str, replace: bool = False) -> bool:
     try:
         items = _stories_for_day(day)
     except Exception:
@@ -118,6 +118,10 @@ def _fill_day(connection, day: date, api_key: str) -> bool:
     if not items:
         logger.error("No Hacker News stories for %s", day.isoformat())
         return False
+    if replace:
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM articles WHERE digest_date = %s", (day,))
+        connection.commit()
     for item in items:
         try:
             _store_story(connection, day, item)
@@ -237,6 +241,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Backfill one short article per day")
     parser.add_argument("--from", dest="start", default="2026-10-01")
     parser.add_argument("--to", dest="end", default="2026-11-09")
+    parser.add_argument("--replace", action="store_true", help="Rewrite days that already have a lesson")
     return parser.parse_args(argv)
 
 

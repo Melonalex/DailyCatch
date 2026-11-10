@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { fetchDates, fetchDigest, type Digest, type Pane } from "./api";
+import { fetchDates, fetchDigest, type Digest, type IssueSummary, type Pane } from "./api";
 import { ClickFx } from "./components/ClickFx";
 import { DigestView } from "./components/DigestView";
 import { IconBook, IconClose, IconMenu, IconMoon, IconSun } from "./components/Icons";
 import { IssueNav } from "./components/IssueNav";
+import { SceneBackground } from "./components/SceneBackground";
+import { seasonFor, type Season } from "./components/SeasonField";
 import { Sidebar } from "./components/Sidebar";
 import { formatDate } from "./format";
 
 export function App() {
-  const [dates, setDates] = useState<string[]>([]);
+  const [issues, setIssues] = useState<IssueSummary[]>([]);
   const [datesLoaded, setDatesLoaded] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [digest, setDigest] = useState<Digest | null>(null);
@@ -22,8 +24,8 @@ export function App() {
         if (!active) {
           return;
         }
-        setDates(value);
-        setSelected(value[0] ?? null);
+        setIssues(value);
+        setSelected(value[0]?.date ?? null);
         setDatesLoaded(true);
       })
       .catch(() => {
@@ -64,7 +66,9 @@ export function App() {
 
   const ready = digest !== null && digest.date === selected;
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [season, setSeason] = useState<Season>(() => seasonFor());
   const [navOpen, setNavOpen] = useState(false);
+  const seasons: Season[] = ["spring", "summer", "autumn", "winter"];
 
   useEffect(() => {
     const stored = window.localStorage.getItem("dailycatch-theme");
@@ -80,6 +84,17 @@ export function App() {
     window.localStorage.setItem("dailycatch-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    const stored = window.localStorage.getItem("dailycatch-season");
+    if (stored === "spring" || stored === "summer" || stored === "autumn" || stored === "winter") {
+      setSeason(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("dailycatch-season", season);
+  }, [season]);
+
   function chooseDate(date: string) {
     setSelected(date);
   }
@@ -91,7 +106,8 @@ export function App() {
 
   return (
     <div className={navOpen ? "app nav-open" : "app"}>
-      <ClickFx />
+      <SceneBackground theme={theme} season={season} />
+      {theme === "dark" ? <ClickFx /> : null}
       <header className="topbar">
         <div className="brand-lockup">
           <IconBook className="brand-icon" />
@@ -102,6 +118,21 @@ export function App() {
         </div>
         <div className="topbar-actions">
           <p className="topbar-note">English study</p>
+          <div className="season-switch" role="group" aria-label="Season">
+            {seasons.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={season === item}
+                onClick={() => {
+                  setSeason(item);
+                  setTheme("light");
+                }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             className="theme-switch"
@@ -109,8 +140,7 @@ export function App() {
             aria-label={theme === "dark" ? "Switch to light" : "Switch to dark"}
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
-            {theme === "dark" ? <IconMoon /> : <IconSun />}
-            <span className="knob" />
+            <span className="knob">{theme === "dark" ? <IconMoon /> : <IconSun />}</span>
           </button>
           <button
             type="button"
@@ -130,7 +160,7 @@ export function App() {
         onClick={() => setNavOpen(false)}
       />
       <div className="edition">
-        <Sidebar dates={dates} selected={selected} onSelectDate={chooseDate} />
+        <Sidebar issues={issues} selected={selected} onSelectDate={chooseDate} />
         <div className="spread">
           <IssueNav
             digest={ready ? digest : null}

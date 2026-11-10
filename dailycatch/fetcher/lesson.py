@@ -10,40 +10,43 @@ logger = logging.getLogger(__name__)
 TYPE_SPECS = {
     "ielts": {
         "difficulty": "IELTS 6.5-7.5",
-        "words": "220-340",
+        "words": "560-820",
         "topics": ("education", "technology", "society", "environment", "workplace"),
         "instruction": (
-            "Write an original medium-short article at IELTS 6.5-7.5. "
-            "Give it a small story: one person, one place, then the argument. "
-            "Formal, clear, and idiomatic. Do not report today's news."
+            "Write an original short story at IELTS 6.5-7.5. "
+            "One person, one place, a problem, a turn, and an ending. "
+            "The argument belongs inside the story, not in a lecture after it. "
+            "Formal, clear, and idiomatic. Do not retell the supplied news."
         ),
     },
     "daily": {
         "difficulty": "Everyday English",
-        "words": "180-280",
+        "words": "480-700",
         "topics": ("home", "commute", "food", "weekend", "shopping", "neighbors"),
         "instruction": (
-            "Write a medium-short everyday story. One scene, a few lines of dialogue, "
-            "and a quiet ending. Use common spoken vocabulary."
+            "Write an original everyday short story. "
+            "A full scene, several lines of spoken dialogue, a small problem, and a quiet ending. "
+            "Use common spoken vocabulary. Do not retell the supplied news."
         ),
     },
     "tech": {
         "difficulty": "Upper-intermediate technology",
-        "words": "220-340",
+        "words": "560-820",
         "topics": ("artificial intelligence", "programming", "the internet", "developer work"),
         "instruction": (
-            "Write a medium-short piece for a reader who studies computer science. "
-            "Open with a concrete scene from a working day, then explain the idea. "
-            "Do not turn it into a news report."
+            "Write an original short story for a reader who studies computer science. "
+            "Follow one person through a working day. The technical idea is what they run into, "
+            "not a textbook section after the scene. Do not retell the supplied news."
         ),
     },
     "news": {
         "difficulty": "News English",
-        "words": "180-260",
+        "words": "420-620",
         "topics": ("current events",),
         "instruction": (
-            "Write an objective summary of recent events that appear in the supplied items. "
-            "No opinion, no prediction, and no fact that is not in those items."
+            "Write a medium-short news account using only the supplied items. "
+            "You may follow the events in time and quote the supplied comments. "
+            "Do not invent a character, a scene, a motive, a number, or any fact that is not in the items."
         ),
     },
 }
@@ -53,8 +56,9 @@ SYSTEM_PROMPT = (
     "Return one JSON object with keys article_type, difficulty, topic, title, paragraphs, "
     "translation, vocabulary, hot_topics. "
     "Follow the requested article_type, topic, difficulty, and word range. "
+    "Count words in the English paragraphs only. A piece under the minimum is incomplete; do not stop early. "
     "title is at most 8 words. "
-    "paragraphs is 4 to 6 English paragraphs, a medium-short piece with a narrative shape. "
+    "paragraphs is 6 to 9 English paragraphs. "
     "translation is the same number of paragraphs, a faithful Chinese translation, with no extra commentary. "
     "vocabulary has 5 to 8 entries from the article. Each entry has word, pos, meaning, usage, and contrast. "
     "pos is a short grammar label such as n. or verb. "
@@ -141,7 +145,34 @@ def compose_lesson(
         response = request_with_retries(
             "POST",
             DEEPSEEK_URL,
-            timeout=90,
+            timeout=180,
+            retries=HTTP_RETRIES,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json=body,
+        )
+        content = response.json()["choices"][0]["message"]["content"]
+        lesson = parse_lesson(content, assignment)
+        if lesson is None:
+            return None
+        count = _word_count(lesson["paragraphs"])
+        minimum = _minimum_words(assignment.get("words", ""))
+        if minimum and count < minimum:
+            logger.warning("Lesson is short (%s words, minimum %s); retrying once", count, minimum)
+            retry = _request_lesson(body, api_key, assignment)
+            if retry and _word_count(retry["paragraphs"]) > count:
+                return retry
+        return lesson
+    except Exception:
+        logger.exception("Lesson request failed")
+        return None
+
+
+def _request_lesson(body: dict, api_key: str, assignment: dict) -> dict | None:
+    try:
+        response = request_with_retries(
+            "POST",
+            DEEPSEEK_URL,
+            timeout=180,
             retries=HTTP_RETRIES,
             headers={"Authorization": f"Bearer {api_key}"},
             json=body,
@@ -149,8 +180,19 @@ def compose_lesson(
         content = response.json()["choices"][0]["message"]["content"]
         return parse_lesson(content, assignment)
     except Exception:
-        logger.exception("Lesson request failed")
+        logger.exception("Lesson retry failed")
         return None
+
+
+def _word_count(paragraphs: list[str]) -> int:
+    return len(" ".join(paragraphs).split())
+
+
+def _minimum_words(spec: str) -> int:
+    low = spec.split("-", 1)[0].strip()
+    if not low.isdigit():
+        return 0
+    return int(int(low) * 0.9)
 
 
 def parse_lesson(content: str, assignment: dict) -> dict | None:
@@ -176,8 +218,8 @@ def parse_lesson(content: str, assignment: dict) -> dict | None:
         "difficulty": assignment["difficulty"],
         "topic": assignment["topic"],
         "title": title[:256],
-        "paragraphs": paragraphs[:6],
-        "translation": translation[:6],
+        "paragraphs": paragraphs[:9],
+        "translation": translation[:9],
         "vocabulary": _vocabulary(data.get("vocabulary")),
         "hot_topics": _hot_topics(data.get("hot_topics")),
     }

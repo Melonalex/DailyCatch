@@ -2,20 +2,32 @@ import json
 from datetime import date, datetime
 
 
-def list_dates(connection) -> list[str]:
+def list_dates(connection) -> list[dict]:
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT DISTINCT digest_date FROM (
+            SELECT issues.digest_date, lessons.title, lessons.article_type,
+                   lessons.difficulty, lessons.topic
+            FROM (
               SELECT digest_date FROM articles
               UNION
               SELECT digest_date FROM lessons
             ) AS issues
-            ORDER BY digest_date DESC
+            LEFT JOIN lessons ON lessons.digest_date = issues.digest_date
+            ORDER BY issues.digest_date DESC
             """
         )
         rows = cursor.fetchall()
-    return [_date_text(row["digest_date"]) for row in rows]
+    return [
+        {
+            "date": _date_text(row["digest_date"]),
+            "title": row["title"],
+            "article_type": row["article_type"],
+            "difficulty": row["difficulty"],
+            "topic": row["topic"],
+        }
+        for row in rows
+    ]
 
 
 def get_lesson(connection, digest_date: date) -> dict | None:

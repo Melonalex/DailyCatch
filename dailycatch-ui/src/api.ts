@@ -39,12 +39,35 @@ export type Digest = {
 
 export type Pane = { kind: "article" } | { kind: "topic"; id: number };
 
-export async function fetchDates(): Promise<string[]> {
+export type IssueSummary = {
+  date: string;
+  title: string | null;
+  article_type: string | null;
+  difficulty: string | null;
+  topic: string | null;
+};
+
+export async function fetchDates(): Promise<IssueSummary[]> {
   const response = await fetch("/api/dates");
   if (!response.ok) {
     throw new Error("Could not load dates.");
   }
-  return response.json();
+  const body = await response.json();
+  if (!Array.isArray(body)) {
+    return [];
+  }
+  return body.map((item) => {
+    if (typeof item === "string") {
+      return { date: item, title: null, article_type: null, difficulty: null, topic: null };
+    }
+    return {
+      date: String(item.date),
+      title: item.title ?? null,
+      article_type: item.article_type ?? null,
+      difficulty: item.difficulty ?? null,
+      topic: item.topic ?? null,
+    };
+  });
 }
 
 export async function fetchDigest(digestDate: string): Promise<Digest> {
