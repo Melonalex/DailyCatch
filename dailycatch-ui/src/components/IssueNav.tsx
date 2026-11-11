@@ -1,4 +1,4 @@
-import type { Digest, Pane } from "../api";
+import type { Digest, Pane } from "../types";
 
 type IssueNavProps = {
   digest: Digest | null;

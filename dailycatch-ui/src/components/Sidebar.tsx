@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { IssueSummary } from "../api";
+import type { IssueSummary } from "../types";
 import { formatDate, formatIssueDate, monthLabel } from "../format";
 
 type SidebarProps = {

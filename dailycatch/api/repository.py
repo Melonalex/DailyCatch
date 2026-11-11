@@ -1,8 +1,10 @@
 import json
 from datetime import date, datetime
 
+from api.schemas import DigestItem, HotTopic, IssueSummary, Lesson
 
-def list_dates(connection) -> list[dict]:
+
+def list_dates(connection) -> list[IssueSummary]:
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -18,19 +20,10 @@ def list_dates(connection) -> list[dict]:
             """
         )
         rows = cursor.fetchall()
-    return [
-        {
-            "date": _date_text(row["digest_date"]),
-            "title": row["title"],
-            "article_type": row["article_type"],
-            "difficulty": row["difficulty"],
-            "topic": row["topic"],
-        }
-        for row in rows
-    ]
+    return [_issue(row) for row in rows]
 
 
-def get_lesson(connection, digest_date: date) -> dict | None:
+def get_lesson(connection, digest_date: date) -> Lesson | None:
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -43,18 +36,10 @@ def get_lesson(connection, digest_date: date) -> dict | None:
         row = cursor.fetchone()
     if not row:
         return None
-    return {
-        "article_type": row["article_type"],
-        "difficulty": row["difficulty"],
-        "topic": row["topic"],
-        "title": row["title"],
-        "paragraphs": _decode_json(row["body"]) or [],
-        "translation": _decode_json(row["translation"]) or [],
-        "vocabulary": _decode_json(row["vocabulary"]) or [],
-    }
+    return _lesson(row)
 
 
-def get_hot_topics(connection, digest_date: date) -> list[dict]:
+def get_hot_topics(connection, digest_date: date) -> list[HotTopic]:
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -66,19 +51,10 @@ def get_hot_topics(connection, digest_date: date) -> list[dict]:
             (digest_date,),
         )
         rows = cursor.fetchall()
-    return [
-        {
-            "id": row["id"],
-            "title": row["title"],
-            "overview": row["overview"],
-            "quotes": _decode_json(row["quotes"]) or [],
-            "background": row["background"],
-        }
-        for row in rows
-    ]
+    return [_hot_topic(row) for row in rows]
 
 
-def get_digest(connection, digest_date: date) -> list[dict]:
+def get_digest(connection, digest_date: date) -> list[DigestItem]:
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -94,21 +70,53 @@ def get_digest(connection, digest_date: date) -> list[dict]:
     return [_item(row) for row in rows]
 
 
-def _item(row: dict) -> dict:
-    return {
-        "id": row["id"],
-        "source_type": row["source_type"],
-        "source_name": row["source_name"],
-        "title": row["title"],
-        "url": row["url"],
-        "author": row["author"],
-        "points": row["points"],
-        "comment_count": row["comment_count"],
-        "published_at": _timestamp_text(row["published_at"]),
-        "summary": row["summary"],
-        "vocabulary": _decode_json(row["vocabulary"]),
-        "comments_digest": _decode_json(row["comments_digest"]),
-    }
+def _issue(row: dict) -> IssueSummary:
+    return IssueSummary(
+        date=_date_text(row["digest_date"]),
+        title=row["title"],
+        article_type=row["article_type"],
+        difficulty=row["difficulty"],
+        topic=row["topic"],
+    )
+
+
+def _lesson(row: dict) -> Lesson:
+    return Lesson(
+        article_type=row["article_type"],
+        difficulty=row["difficulty"],
+        topic=row["topic"],
+        title=row["title"],
+        paragraphs=_decode_json(row["body"]) or [],
+        translation=_decode_json(row["translation"]) or [],
+        vocabulary=_decode_json(row["vocabulary"]) or [],
+    )
+
+
+def _hot_topic(row: dict) -> HotTopic:
+    return HotTopic(
+        id=row["id"],
+        title=row["title"],
+        overview=row["overview"],
+        quotes=_decode_json(row["quotes"]) or [],
+        background=row["background"],
+    )
+
+
+def _item(row: dict) -> DigestItem:
+    return DigestItem(
+        id=row["id"],
+        source_type=row["source_type"],
+        source_name=row["source_name"],
+        title=row["title"],
+        url=row["url"],
+        author=row["author"],
+        points=row["points"],
+        comment_count=row["comment_count"],
+        published_at=_timestamp_text(row["published_at"]),
+        summary=row["summary"],
+        vocabulary=_decode_json(row["vocabulary"]),
+        comments_digest=_decode_json(row["comments_digest"]),
+    )
 
 
 def _decode_json(value):

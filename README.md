@@ -84,7 +84,7 @@ Running the same date again replaces those rows. It does not create duplicates.
 
 - `GET /api/health` → `{"status":"ok"}`
 - `GET /api/dates` → issues newest first, each with `date`, `title`, `article_type`, `difficulty`, and `topic`
-- `GET /api/digests/YYYY-MM-DD` → `{"date","items"}`, or 404 when that date is empty
+- `GET /api/digests/YYYY-MM-DD` → `date`, `lesson`, `hot_topics`, and `items`, or 404 when that date has none of them
 
 There is no CORS and no application auth. The API is read-only.
 
@@ -168,12 +168,7 @@ curl -s -u reader http://127.0.0.1:8080/api/dates
 
 ### 6. Morning job
 
-```bash
-sudo mkdir -p /var/log/dailycatch
-crontab -e
-```
-
-Paste the line from `deploy/crontab.example`. It runs at 07:00 and appends stdout and stderr to `/var/log/dailycatch/fetcher.log`. A partial fetch still exits 0 when at least one item was stored, so cron does not mail on a single failed source. Exit code 1 (nothing stored) is the failure signal.
+The API process schedules the fetch. At 07:00 Asia/Shanghai it runs the same collection as `python -m fetcher.main` and writes MySQL directly. It does not call the HTTP API. If the process starts after 07:00 and today has no lesson yet, it runs once immediately. A later restart the same day does not regenerate an existing lesson. Keep `dailycatch-api` running; the job stops when that process stops.
 
 ## Check for non-English source text
 

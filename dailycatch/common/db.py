@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pymysql
@@ -19,6 +21,15 @@ def connect(settings: Settings, *, dictionary: bool = False):
         cursorclass=DictCursor if dictionary else pymysql.cursors.Cursor,
         autocommit=False,
     )
+
+
+@contextmanager
+def open_connection(settings: Settings, *, dictionary: bool = False) -> Iterator[pymysql.Connection]:
+    connection = connect(settings, dictionary=dictionary)
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
 def ensure_schema(connection) -> None:

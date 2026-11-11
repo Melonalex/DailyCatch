@@ -1,99 +1,31 @@
-import { useEffect, useState } from "react";
-import { fetchDates, fetchDigest, type Digest, type IssueSummary, type Pane } from "./api";
+import { useState } from "react";
+import type { Pane } from "./types";
 import { ClickFx } from "./components/ClickFx";
 import { DigestView } from "./components/DigestView";
 import { IconBook, IconClose, IconMenu, IconMoon, IconSun } from "./components/Icons";
 import { IssueNav } from "./components/IssueNav";
 import { SceneBackground } from "./components/SceneBackground";
-import { seasonFor, type Season } from "./components/SeasonField";
+import type { Season } from "./components/SeasonField";
 import { Sidebar } from "./components/Sidebar";
 import { formatDate } from "./format";
+import { useAppearance } from "./hooks/useAppearance";
+import { useIssues } from "./hooks/useIssues";
 
 export function App() {
-  const [issues, setIssues] = useState<IssueSummary[]>([]);
-  const [datesLoaded, setDatesLoaded] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [digest, setDigest] = useState<Digest | null>(null);
-  const [pane, setPane] = useState<Pane>({ kind: "article" });
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    fetchDates()
-      .then((value) => {
-        if (!active) {
-          return;
-        }
-        setIssues(value);
-        setSelected(value[0]?.date ?? null);
-        setDatesLoaded(true);
-      })
-      .catch(() => {
-        if (active) {
-          setError("Could not load dates.");
-          setDatesLoaded(true);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selected) {
-      setDigest(null);
-      return;
-    }
-    let active = true;
-    setDigest(null);
-    setPane({ kind: "article" });
-    setError(null);
-    fetchDigest(selected)
-      .then((value) => {
-        if (active) {
-          setDigest(value);
-        }
-      })
-      .catch((err: Error) => {
-        if (active) {
-          setError(err.message);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [selected]);
-
-  const ready = digest !== null && digest.date === selected;
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [season, setSeason] = useState<Season>(() => seasonFor());
+  const {
+    issues,
+    datesLoaded,
+    selected,
+    setSelected,
+    digest,
+    pane,
+    setPane,
+    error,
+    ready,
+  } = useIssues();
+  const { theme, setTheme, season, setSeason } = useAppearance();
   const [navOpen, setNavOpen] = useState(false);
   const seasons: Season[] = ["spring", "summer", "autumn", "winter"];
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("dailycatch-theme");
-    if (stored === "light" || stored === "dark") {
-      setTheme(stored);
-      return;
-    }
-    setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("dailycatch-theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("dailycatch-season");
-    if (stored === "spring" || stored === "summer" || stored === "autumn" || stored === "winter") {
-      setSeason(stored);
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("dailycatch-season", season);
-  }, [season]);
 
   function chooseDate(date: string) {
     setSelected(date);
