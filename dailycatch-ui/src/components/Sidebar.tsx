@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { IssueSummary } from "../types";
 import { formatDate, formatIssueDate, monthLabel } from "../format";
 
@@ -13,7 +14,10 @@ type Tip = { issue: IssueSummary; top: number; left: number };
 export function Sidebar({ issues, selected, onSelectDate }: SidebarProps) {
   const [tip, setTip] = useState<Tip | null>(null);
 
-  function showTip(issue: IssueSummary, element: HTMLButtonElement) {
+  function showTip(issue: IssueSummary | undefined, element: HTMLButtonElement) {
+    if (!issue) {
+      return;
+    }
     const rect = element.getBoundingClientRect();
     const width = 236;
     const left = rect.right + 12 + width > window.innerWidth ? rect.left - width - 12 : rect.right + 12;
@@ -22,7 +26,23 @@ export function Sidebar({ issues, selected, onSelectDate }: SidebarProps) {
   }
 
   return (
-    <aside className="date-rail">
+    <aside
+      className="date-rail"
+      onMouseOver={(event) => {
+        const button = (event.target as Element).closest?.(".date-button");
+        if (!(button instanceof HTMLButtonElement)) {
+          return;
+        }
+        showTip(issueFor(issues, button.dataset.date), button);
+      }}
+      onMouseOut={(event) => {
+        const next = event.relatedTarget;
+        if (next instanceof Node && event.currentTarget.contains(next)) {
+          return;
+        }
+        setTip(null);
+      }}
+    >
       {groupByMonth(issues).map((group) => (
         <div className="month-group" key={group.label}>
           <p className="rail-label">{group.label}</p>
@@ -31,9 +51,8 @@ export function Sidebar({ issues, selected, onSelectDate }: SidebarProps) {
               key={issue.date}
               type="button"
               className={issue.date === selected ? "date-button selected" : "date-button"}
+              data-date={issue.date}
               onClick={() => onSelectDate(issue.date)}
-              onMouseEnter={(event) => showTip(issue, event.currentTarget)}
-              onMouseLeave={() => setTip(null)}
               onFocus={(event) => showTip(issue, event.currentTarget)}
               onBlur={() => setTip(null)}
             >
@@ -42,20 +61,26 @@ export function Sidebar({ issues, selected, onSelectDate }: SidebarProps) {
           ))}
         </div>
       ))}
-      {tip && (
-        <div className="rail-tip" style={{ top: tip.top, left: tip.left }} role="tooltip">
-          <p>{formatIssueDate(tip.issue.date)}</p>
-          {tip.issue.article_type ? (
-            <p>
-              {[tip.issue.article_type, tip.issue.difficulty, tip.issue.topic].filter(Boolean).join(" · ")}
-            </p>
-          ) : (
-            <p>No lesson for this date</p>
-          )}
-        </div>
-      )}
+      {tip &&
+        createPortal(
+          <div className="rail-tip" style={{ top: tip.top, left: tip.left }} role="tooltip">
+            <p>{formatIssueDate(tip.issue.date)}</p>
+            {tip.issue.article_type ? (
+              <p>
+                {[tip.issue.article_type, tip.issue.difficulty, tip.issue.topic].filter(Boolean).join(" · ")}
+              </p>
+            ) : (
+              <p>No lesson for this date</p>
+            )}
+          </div>,
+          document.body,
+        )}
     </aside>
   );
+}
+
+function issueFor(issues: IssueSummary[], date: string | undefined): IssueSummary | undefined {
+  return issues.find((issue) => issue.date === date);
 }
 
 function groupByMonth(issues: IssueSummary[]): { label: string; dates: IssueSummary[] }[] {

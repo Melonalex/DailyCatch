@@ -284,13 +284,14 @@ body, .topbar, .date-rail, .chapters, .reader-pane, .issue-row, .date-button, .s
 .date-button.selected .date-title { font-weight: 600; }
 .rail-tip {
   position: fixed;
-  z-index: 50;
+  z-index: 80;
   width: 236px;
   margin: 0;
   padding: 12px 14px;
   border: 1px solid var(--glass-border);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  background: #fffdfb;
+  color: #18181b;
   box-shadow: var(--shadow);
   backdrop-filter: blur(16px);
   pointer-events: none;
