@@ -48,16 +48,28 @@ function ambient(season: Season, width: number, height: number): Mote {
   const autumn = season === "autumn";
   const summer = season === "summer";
   const winter = season === "winter";
+  const kind = winter
+    ? Math.random() < 0.22
+      ? 0
+      : 1 + Math.floor(Math.random() * 2)
+    : Math.floor(Math.random() * 3);
+  const size = winter
+    ? kind === 0
+      ? 1.4 + Math.random() * 1.8
+      : 18 + Math.random() * 14
+    : summer
+      ? 14 + Math.random() * 18
+      : 5 + Math.random() * 8;
   return {
     x: Math.random() * width,
     y: Math.random() * height,
-    vx: autumn ? 0.55 + Math.random() * 1.15 : (Math.random() - 0.5) * 0.4,
-    vy: summer ? -(0.12 + Math.random() * 0.38) : 0.28 + Math.random() * (winter ? 1.15 : 0.75),
+    vx: autumn ? 0.55 + Math.random() * 1.15 : (Math.random() - 0.5) * (summer ? 0.28 : 0.4),
+    vy: summer ? -(0.18 + Math.random() * 0.42) : 0.28 + Math.random() * (winter ? 0.9 : 0.75),
     rot: Math.random() * Math.PI * 2,
-    vr: (Math.random() - 0.5) * (autumn ? 0.05 : 0.02),
-    size: winter ? 1.1 + Math.random() * 3.2 : 5 + Math.random() * 8,
+    vr: (Math.random() - 0.5) * (winter ? 0.012 : autumn ? 0.05 : 0.02),
+    size,
     color: colorFor(season),
-    kind: Math.floor(Math.random() * 3),
+    kind,
     life: 1,
     burst: false,
   };
@@ -67,6 +79,7 @@ function burstMote(season: Season, x: number, y: number): Mote {
   const angle = Math.random() * Math.PI * 2;
   const speed = 1.1 + Math.random() * 3.2;
   const winter = season === "winter";
+  const summer = season === "summer";
   return {
     x,
     y,
@@ -74,9 +87,9 @@ function burstMote(season: Season, x: number, y: number): Mote {
     vy: Math.sin(angle) * speed - (winter ? 0.6 : 0.2),
     rot: Math.random() * Math.PI * 2,
     vr: (Math.random() - 0.5) * 0.28,
-    size: winter ? 3 + Math.random() * 5 : 6 + Math.random() * 8,
+    size: winter ? 14 + Math.random() * 12 : summer ? 12 + Math.random() * 10 : 6 + Math.random() * 8,
     color: colorFor(season),
-    kind: Math.floor(Math.random() * 3),
+    kind: winter ? 2 : Math.floor(Math.random() * 3),
     life: 1,
     burst: true,
   };
@@ -115,20 +128,95 @@ function drawLeaf(ctx: CanvasRenderingContext2D, mote: Mote) {
   ctx.restore();
 }
 
-function drawFlake(ctx: CanvasRenderingContext2D, mote: Mote) {
+function drawCrystal(ctx: CanvasRenderingContext2D, mote: Mote) {
+  const size = mote.size;
   ctx.save();
   ctx.translate(mote.x, mote.y);
   ctx.rotate(mote.rot);
-  ctx.globalAlpha = 0.85 * mote.life;
-  ctx.strokeStyle = mote.color;
-  ctx.lineWidth = mote.size > 3.2 ? 1.3 : 1;
+  ctx.globalAlpha = mote.life;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#1a4f86";
+  ctx.fillStyle = "#ffffff";
+  ctx.lineWidth = Math.max(2, size * 0.11);
+  ctx.beginPath();
+  ctx.arc(0, 0, Math.max(2.4, size * 0.16), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
   ctx.beginPath();
   for (let arm = 0; arm < 6; arm += 1) {
-    const angle = (Math.PI / 3) * arm;
+    const angle = (Math.PI / 3) * arm - Math.PI / 2;
+    const tipX = Math.cos(angle) * size;
+    const tipY = Math.sin(angle) * size;
     ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * mote.size, Math.sin(angle) * mote.size);
+    ctx.lineTo(tipX, tipY);
+    for (const joint of [0.42, 0.7]) {
+      const branch = size * (joint === 0.42 ? 0.34 : 0.2);
+      const jointX = Math.cos(angle) * size * joint;
+      const jointY = Math.sin(angle) * size * joint;
+      ctx.moveTo(jointX, jointY);
+      ctx.lineTo(jointX + Math.cos(angle + 1.02) * branch, jointY + Math.sin(angle + 1.02) * branch);
+      ctx.moveTo(jointX, jointY);
+      ctx.lineTo(jointX + Math.cos(angle - 1.02) * branch, jointY + Math.sin(angle - 1.02) * branch);
+    }
   }
   ctx.stroke();
+  ctx.restore();
+}
+
+function drawSummer(ctx: CanvasRenderingContext2D, mote: Mote) {
+  ctx.save();
+  ctx.translate(mote.x, mote.y);
+  ctx.rotate(mote.rot);
+  ctx.globalAlpha = mote.life;
+  if (mote.kind === 0) {
+    ctx.fillStyle = "#ffe08a";
+    ctx.strokeStyle = "#e09000";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, mote.size * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    for (let ray = 0; ray < 8; ray += 1) {
+      const angle = (Math.PI / 4) * ray;
+      ctx.moveTo(Math.cos(angle) * mote.size * 0.5, Math.sin(angle) * mote.size * 0.5);
+      ctx.lineTo(Math.cos(angle) * mote.size, Math.sin(angle) * mote.size);
+    }
+    ctx.stroke();
+  } else if (mote.kind === 1) {
+    ctx.fillStyle = "#fff7cf";
+    ctx.strokeStyle = "#d97800";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let point = 0; point < 4; point += 1) {
+      const angle = (Math.PI / 2) * point - Math.PI / 2;
+      const tipX = Math.cos(angle) * mote.size;
+      const tipY = Math.sin(angle) * mote.size;
+      const side = angle + Math.PI / 4;
+      if (point === 0) {
+        ctx.moveTo(tipX, tipY);
+      } else {
+        ctx.lineTo(tipX, tipY);
+      }
+      ctx.lineTo(Math.cos(side) * mote.size * 0.22, Math.sin(side) * mote.size * 0.22);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = "#ef9b22";
+    ctx.fillStyle = "#fff4c8";
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.arc(0, -mote.size * 0.35, mote.size * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -mote.size * 0.12);
+    ctx.quadraticCurveTo(mote.size * 0.45, mote.size * 0.15, 0, mote.size * 0.85);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -136,25 +224,19 @@ function drawMote(ctx: CanvasRenderingContext2D, season: Season, mote: Mote) {
   if (season === "winter") {
     if (mote.kind === 0) {
       ctx.save();
-      ctx.globalAlpha = 0.9 * mote.life;
-      ctx.fillStyle = mote.color;
+      ctx.globalAlpha = 0.85 * mote.life;
+      ctx.fillStyle = "#ffffff";
       ctx.beginPath();
-      ctx.arc(mote.x, mote.y, Math.max(0.8, mote.size * 0.45), 0, Math.PI * 2);
+      ctx.arc(mote.x, mote.y, mote.size, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
       return;
     }
-    drawFlake(ctx, mote);
+    drawCrystal(ctx, mote);
     return;
   }
   if (season === "summer") {
-    ctx.save();
-    ctx.globalAlpha = 0.75 * mote.life;
-    ctx.fillStyle = mote.color;
-    ctx.beginPath();
-    ctx.arc(mote.x, mote.y, mote.size * 0.28, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    drawSummer(ctx, mote);
     return;
   }
   if (season === "spring") {
@@ -215,7 +297,10 @@ export function SeasonField({ season }: { season: Season }) {
       for (let index = motes.length - 1; index >= 0; index -= 1) {
         const mote = motes[index];
         if (!reduce) {
-          const sway = season === "summer" ? 0 : Math.sin(frame * 0.02 + mote.rot) * (season === "winter" ? 0.35 : 0.45);
+          const sway =
+            season === "summer"
+              ? Math.sin(frame * 0.012 + mote.rot) * 0.4
+              : Math.sin(frame * 0.02 + mote.rot) * 0.45;
           mote.x += mote.vx * gust + sway;
           mote.y += mote.vy;
           mote.rot += mote.vr;
