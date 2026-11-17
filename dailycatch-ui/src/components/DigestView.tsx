@@ -51,6 +51,22 @@ export function DigestView({ digest, pane }: DigestViewProps) {
   }, [digest.date, pane]);
 
   useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        setPop(null);
+        return;
+      }
+      if (target.closest(".glass-pop") || target.closest(".vocab-word")) {
+        return;
+      }
+      setPop(null);
+    }
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, []);
+
+  useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
