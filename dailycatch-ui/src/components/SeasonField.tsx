@@ -55,10 +55,10 @@ function ambient(season: Season, width: number, height: number): Mote {
     : Math.floor(Math.random() * 3);
   const size = winter
     ? kind === 0
-      ? 1.4 + Math.random() * 1.8
-      : 18 + Math.random() * 14
+      ? 1.2 + Math.random() * 1.4
+      : 10 + Math.random() * 6
     : summer
-      ? 14 + Math.random() * 18
+      ? 6 + Math.random() * 7
       : 5 + Math.random() * 8;
   return {
     x: Math.random() * width,
@@ -87,7 +87,7 @@ function burstMote(season: Season, x: number, y: number): Mote {
     vy: Math.sin(angle) * speed - (winter ? 0.6 : 0.2),
     rot: Math.random() * Math.PI * 2,
     vr: (Math.random() - 0.5) * 0.28,
-    size: winter ? 14 + Math.random() * 12 : summer ? 12 + Math.random() * 10 : 6 + Math.random() * 8,
+    size: winter ? 8 + Math.random() * 6 : summer ? 6 + Math.random() * 5 : 6 + Math.random() * 8,
     color: colorFor(season),
     kind: winter ? 2 : Math.floor(Math.random() * 3),
     life: 1,
@@ -128,39 +128,56 @@ function drawLeaf(ctx: CanvasRenderingContext2D, mote: Mote) {
   ctx.restore();
 }
 
-function drawCrystal(ctx: CanvasRenderingContext2D, mote: Mote) {
-  const size = mote.size;
-  ctx.save();
-  ctx.translate(mote.x, mote.y);
-  ctx.rotate(mote.rot);
-  ctx.globalAlpha = mote.life;
+function flakeSprite(variant: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return canvas;
+  }
+  ctx.translate(32, 32);
+  ctx.strokeStyle = "#ffffff";
+  ctx.fillStyle = "#ffffff";
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = "#1a4f86";
-  ctx.fillStyle = "#ffffff";
-  ctx.lineWidth = Math.max(2, size * 0.11);
-  ctx.beginPath();
-  ctx.arc(0, 0, Math.max(2.4, size * 0.16), 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
+  ctx.lineWidth = 2.4;
+  ctx.shadowColor = "rgba(70, 100, 130, 0.55)";
+  ctx.shadowBlur = 2;
   ctx.beginPath();
   for (let arm = 0; arm < 6; arm += 1) {
     const angle = (Math.PI / 3) * arm - Math.PI / 2;
-    const tipX = Math.cos(angle) * size;
-    const tipY = Math.sin(angle) * size;
     ctx.moveTo(0, 0);
-    ctx.lineTo(tipX, tipY);
-    for (const joint of [0.42, 0.7]) {
-      const branch = size * (joint === 0.42 ? 0.34 : 0.2);
-      const jointX = Math.cos(angle) * size * joint;
-      const jointY = Math.sin(angle) * size * joint;
-      ctx.moveTo(jointX, jointY);
-      ctx.lineTo(jointX + Math.cos(angle + 1.02) * branch, jointY + Math.sin(angle + 1.02) * branch);
-      ctx.moveTo(jointX, jointY);
-      ctx.lineTo(jointX + Math.cos(angle - 1.02) * branch, jointY + Math.sin(angle - 1.02) * branch);
+    ctx.lineTo(Math.cos(angle) * 26, Math.sin(angle) * 26);
+    const joints = variant === 0 ? [0.62] : [0.4, 0.68];
+    for (const joint of joints) {
+      const length = variant === 2 ? 8 : 11;
+      const spread = variant === 2 ? 0.7 : 1;
+      const x = Math.cos(angle) * 26 * joint;
+      const y = Math.sin(angle) * 26 * joint;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle + spread) * length, y + Math.sin(angle + spread) * length);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle - spread) * length, y + Math.sin(angle - spread) * length);
     }
   }
   ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  return canvas;
+}
+
+const FLAKES = [0, 1, 2].map((variant) => flakeSprite(variant));
+
+function drawCrystal(ctx: CanvasRenderingContext2D, mote: Mote) {
+  const sprite = FLAKES[mote.kind % FLAKES.length];
+  const size = mote.size * 2;
+  ctx.save();
+  ctx.translate(mote.x, mote.y);
+  ctx.rotate(mote.rot);
+  ctx.globalAlpha = 0.95 * mote.life;
+  ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
   ctx.restore();
 }
 
@@ -272,8 +289,9 @@ export function SeasonField({ season }: { season: Season }) {
       canvas!.width = Math.floor(width * dpr);
       canvas!.height = Math.floor(height * dpr);
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const density = season === "winter" ? 14000 : 22000;
-      const count = Math.round(Math.min(season === "winter" ? 140 : 70, Math.max(36, (width * height) / density)));
+      const density = season === "winter" ? 42000 : season === "summer" ? 52000 : 22000;
+      const cap = season === "winter" ? 42 : season === "summer" ? 24 : 70;
+      const count = Math.round(Math.min(cap, Math.max(16, (width * height) / density)));
       motes.length = 0;
       for (let index = 0; index < count; index += 1) {
         motes.push(ambient(season, width, height));
