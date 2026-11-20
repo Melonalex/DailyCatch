@@ -445,9 +445,10 @@ h2 {
 .paragraph-block { margin: 0 0 22px; }
 .paragraph {
   margin: 0;
-  font-family: Consolas, "Cascadia Mono", "Segoe UI Mono", ui-monospace, monospace;
-  font-size: 16.5px;
-  line-height: 1.85;
+  font-family: "futura-pt", Jost, Futura, "Century Gothic", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.7;
 }
 .paragraph-translation { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .paragraph-translation span {
