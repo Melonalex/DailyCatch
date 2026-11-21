@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/dailycatch/dailycatch
-ExecStart=/opt/dailycatch/dailycatch/.venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/opt/dailycatch
+ExecStart=/opt/dailycatch/server/dailycatch
 Restart=on-failure
 
 [Install]

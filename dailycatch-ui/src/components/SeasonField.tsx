@@ -53,10 +53,13 @@ function ambient(season: Season, width: number, height: number): Mote {
       ? 0
       : 1 + Math.floor(Math.random() * 2)
     : Math.floor(Math.random() * 3);
+  const snowRoll = Math.random();
   const size = winter
-    ? kind === 0
-      ? 1.2 + Math.random() * 1.4
-      : 10 + Math.random() * 6
+    ? snowRoll < 0.5
+      ? 1 + Math.random() * 1.1
+      : snowRoll < 0.82
+        ? 2.2 + Math.random() * 1.4
+        : 4 + Math.random() * 2.2
     : summer
       ? 6 + Math.random() * 7
       : 5 + Math.random() * 8;
@@ -64,9 +67,9 @@ function ambient(season: Season, width: number, height: number): Mote {
     x: Math.random() * width,
     y: Math.random() * height,
     vx: autumn ? 0.55 + Math.random() * 1.15 : (Math.random() - 0.5) * (summer ? 0.28 : 0.4),
-    vy: summer ? -(0.18 + Math.random() * 0.42) : 0.28 + Math.random() * (winter ? 0.9 : 0.75),
+    vy: summer ? -(0.18 + Math.random() * 0.42) : winter ? 0.18 + size * 0.28 : 0.28 + Math.random() * 0.75,
     rot: Math.random() * Math.PI * 2,
-    vr: (Math.random() - 0.5) * (winter ? 0.012 : autumn ? 0.05 : 0.02),
+    vr: winter ? 0 : (Math.random() - 0.5) * (autumn ? 0.05 : 0.02),
     size,
     color: colorFor(season),
     kind,
@@ -86,10 +89,10 @@ function burstMote(season: Season, x: number, y: number): Mote {
     vx: Math.cos(angle) * speed,
     vy: Math.sin(angle) * speed - (winter ? 0.6 : 0.2),
     rot: Math.random() * Math.PI * 2,
-    vr: (Math.random() - 0.5) * 0.28,
-    size: winter ? 8 + Math.random() * 6 : summer ? 6 + Math.random() * 5 : 6 + Math.random() * 8,
+    vr: (Math.random() - 0.5) * (winter ? 0.03 : 0.28),
+    size: winter ? 48 + Math.random() * 24 : summer ? 6 + Math.random() * 5 : 6 + Math.random() * 8,
     color: colorFor(season),
-    kind: winter ? 2 : Math.floor(Math.random() * 3),
+    kind: Math.floor(Math.random() * (winter ? FLAKES.length : 3)),
     life: 1,
     burst: true,
   };
@@ -128,56 +131,154 @@ function drawLeaf(ctx: CanvasRenderingContext2D, mote: Mote) {
   ctx.restore();
 }
 
-function flakeSprite(variant: number): HTMLCanvasElement {
+function snowSprite(radius: number): HTMLCanvasElement {
+  const pad = Math.ceil(radius * 2.2);
+  const size = (radius + pad) * 2;
   const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     return canvas;
   }
-  ctx.translate(32, 32);
-  ctx.strokeStyle = "#ffffff";
-  ctx.fillStyle = "#ffffff";
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.lineWidth = 2.4;
-  ctx.shadowColor = "rgba(70, 100, 130, 0.55)";
-  ctx.shadowBlur = 2;
+  const center = size / 2;
+  const gradient = ctx.createRadialGradient(center, center, radius * 0.15, center, center, radius + pad * 0.45);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.42, "rgba(255,255,255,0.95)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gradient;
   ctx.beginPath();
-  for (let arm = 0; arm < 6; arm += 1) {
-    const angle = (Math.PI / 3) * arm - Math.PI / 2;
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * 26, Math.sin(angle) * 26);
-    const joints = variant === 0 ? [0.62] : [0.4, 0.68];
-    for (const joint of joints) {
-      const length = variant === 2 ? 8 : 11;
-      const spread = variant === 2 ? 0.7 : 1;
-      const x = Math.cos(angle) * 26 * joint;
-      const y = Math.sin(angle) * 26 * joint;
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(angle + spread) * length, y + Math.sin(angle + spread) * length);
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + Math.cos(angle - spread) * length, y + Math.sin(angle - spread) * length);
-    }
-  }
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+  ctx.arc(center, center, radius + pad * 0.45, 0, Math.PI * 2);
   ctx.fill();
   return canvas;
 }
 
-const FLAKES = [0, 1, 2].map((variant) => flakeSprite(variant));
+const SNOW = [1.4, 3, 5.4].map((radius) => snowSprite(radius));
 
-function drawCrystal(ctx: CanvasRenderingContext2D, mote: Mote) {
+type FlakeStyle = {
+  branches: number[];
+  branchScale: number;
+  twigs: boolean;
+  tip: "point" | "diamond" | "fork";
+  center: number;
+};
+
+const FLAKE_STYLES: FlakeStyle[] = [
+  { branches: [0.34, 0.52, 0.7, 0.86], branchScale: 0.36, twigs: true, tip: "diamond", center: 8 },
+  { branches: [0.4, 0.62, 0.82], branchScale: 0.46, twigs: false, tip: "fork", center: 11 },
+  { branches: [0.28, 0.44, 0.6, 0.76], branchScale: 0.3, twigs: true, tip: "point", center: 6 },
+  { branches: [0.46, 0.68], branchScale: 0.52, twigs: true, tip: "diamond", center: 13 },
+];
+
+function traceBranch(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, reach: number, twigs: boolean) {
+  const x2 = x + Math.sin(angle) * reach;
+  const y2 = y - Math.cos(angle) * reach;
+  ctx.moveTo(x, y);
+  ctx.lineTo(x2, y2);
+  if (!twigs) {
+    return;
+  }
+  const midX = x + Math.sin(angle) * reach * 0.55;
+  const midY = y - Math.cos(angle) * reach * 0.55;
+  const twig = reach * 0.42;
+  ctx.moveTo(midX, midY);
+  ctx.lineTo(midX + Math.sin(angle + 0.75) * twig, midY - Math.cos(angle + 0.75) * twig);
+  ctx.moveTo(midX, midY);
+  ctx.lineTo(midX + Math.sin(angle - 0.55) * twig * 0.65, midY - Math.cos(angle - 0.55) * twig * 0.65);
+}
+
+function traceArm(ctx: CanvasRenderingContext2D, length: number, style: FlakeStyle) {
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, -length);
+  for (const place of style.branches) {
+    const y = -length * place;
+    const reach = length * style.branchScale * (1.15 - place);
+    traceBranch(ctx, 0, y, Math.PI / 3, reach, style.twigs);
+    traceBranch(ctx, 0, y, -Math.PI / 3, reach, style.twigs);
+  }
+  if (style.tip === "diamond") {
+    ctx.moveTo(0, -length + 8);
+    ctx.lineTo(6, -length);
+    ctx.lineTo(0, -length - 9);
+    ctx.lineTo(-6, -length);
+    ctx.closePath();
+    return;
+  }
+  if (style.tip === "fork") {
+    ctx.moveTo(0, -length * 0.88);
+    ctx.lineTo(8, -length - 3);
+    ctx.moveTo(0, -length * 0.88);
+    ctx.lineTo(-8, -length - 3);
+    ctx.moveTo(0, -length * 0.88);
+    ctx.lineTo(0, -length - 7);
+  }
+}
+
+function flakeSprite(style: FlakeStyle): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = 180;
+  canvas.height = 180;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return canvas;
+  }
+  const strokeArms = () => {
+    ctx.beginPath();
+    for (let arm = 0; arm < 6; arm += 1) {
+      ctx.save();
+      ctx.translate(90, 90);
+      ctx.rotate((Math.PI / 3) * arm);
+      traceArm(ctx, 68, style);
+      ctx.restore();
+    }
+  };
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "rgba(190, 216, 242, 0.85)";
+  ctx.lineWidth = 3.4;
+  strokeArms();
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,0.96)";
+  ctx.lineWidth = 1.8;
+  strokeArms();
+  ctx.stroke();
+  ctx.beginPath();
+  for (let point = 0; point < 6; point += 1) {
+    const angle = (Math.PI / 3) * point - Math.PI / 2;
+    const x = 90 + Math.cos(angle) * style.center;
+    const y = 90 + Math.sin(angle) * style.center;
+    if (point === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.fill();
+  ctx.stroke();
+  return canvas;
+}
+
+const FLAKES = FLAKE_STYLES.map((style) => flakeSprite(style));
+
+function drawFlake(ctx: CanvasRenderingContext2D, mote: Mote) {
   const sprite = FLAKES[mote.kind % FLAKES.length];
-  const size = mote.size * 2;
+  const drawSize = mote.size * 2.1;
   ctx.save();
   ctx.translate(mote.x, mote.y);
   ctx.rotate(mote.rot);
-  ctx.globalAlpha = 0.95 * mote.life;
-  ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+  ctx.globalAlpha = 0.92 * mote.life;
+  ctx.drawImage(sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+  ctx.restore();
+}
+
+function drawSnow(ctx: CanvasRenderingContext2D, mote: Mote) {
+  const sprite = mote.size < 1.8 ? SNOW[0] : mote.size < 3.2 ? SNOW[1] : SNOW[2];
+  const drawSize = mote.size * 5;
+  ctx.save();
+  ctx.globalAlpha = mote.life * (mote.size < 2.1 ? 0.84 : mote.size < 3.6 ? 0.94 : 1);
+  ctx.drawImage(sprite, mote.x - drawSize / 2, mote.y - drawSize / 2, drawSize, drawSize);
   ctx.restore();
 }
 
@@ -239,17 +340,11 @@ function drawSummer(ctx: CanvasRenderingContext2D, mote: Mote) {
 
 function drawMote(ctx: CanvasRenderingContext2D, season: Season, mote: Mote) {
   if (season === "winter") {
-    if (mote.kind === 0) {
-      ctx.save();
-      ctx.globalAlpha = 0.85 * mote.life;
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(mote.x, mote.y, mote.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+    if (mote.burst) {
+      drawFlake(ctx, mote);
       return;
     }
-    drawCrystal(ctx, mote);
+    drawSnow(ctx, mote);
     return;
   }
   if (season === "summer") {
@@ -265,14 +360,17 @@ function drawMote(ctx: CanvasRenderingContext2D, season: Season, mote: Mote) {
 
 export function SeasonField({ season }: { season: Season }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const burstRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) {
+    const burstCanvas = burstRef.current;
+    if (!canvas || !burstCanvas) {
       return;
     }
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
+    const burstCtx = burstCanvas.getContext("2d");
+    if (!ctx || !burstCtx) {
       return;
     }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -288,10 +386,13 @@ export function SeasonField({ season }: { season: Season }) {
       height = window.innerHeight;
       canvas!.width = Math.floor(width * dpr);
       canvas!.height = Math.floor(height * dpr);
+      burstCanvas!.width = canvas!.width;
+      burstCanvas!.height = canvas!.height;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const density = season === "winter" ? 42000 : season === "summer" ? 52000 : 22000;
-      const cap = season === "winter" ? 42 : season === "summer" ? 24 : 70;
-      const count = Math.round(Math.min(cap, Math.max(16, (width * height) / density)));
+      burstCtx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const density = season === "winter" ? 12500 : season === "summer" ? 52000 : 22000;
+      const cap = season === "winter" ? 120 : season === "summer" ? 24 : 70;
+      const count = Math.round(Math.min(cap, Math.max(season === "winter" ? 40 : 16, (width * height) / density)));
       motes.length = 0;
       for (let index = 0; index < count; index += 1) {
         motes.push(ambient(season, width, height));
@@ -302,7 +403,7 @@ export function SeasonField({ season }: { season: Season }) {
       if (reduce) {
         return;
       }
-      const count = season === "winter" ? 18 : 14;
+      const count = season === "winter" ? 8 : 14;
       for (let index = 0; index < count; index += 1) {
         motes.push(burstMote(season, event.clientX, event.clientY));
       }
@@ -311,20 +412,28 @@ export function SeasonField({ season }: { season: Season }) {
     function step() {
       frame += 1;
       ctx!.clearRect(0, 0, width, height);
+      burstCtx!.clearRect(0, 0, width, height);
       const gust = season === "autumn" ? 0.75 + Math.sin(frame * 0.01) * 0.7 : 1;
       for (let index = motes.length - 1; index >= 0; index -= 1) {
         const mote = motes[index];
         if (!reduce) {
-          const sway =
-            season === "summer"
-              ? Math.sin(frame * 0.012 + mote.rot) * 0.4
-              : Math.sin(frame * 0.02 + mote.rot) * 0.45;
-          mote.x += mote.vx * gust + sway;
-          mote.y += mote.vy;
-          mote.rot += mote.vr;
           if (mote.burst) {
-            mote.vy += 0.035;
-            mote.life -= 0.016;
+            mote.x += mote.vx;
+            mote.y += mote.vy;
+            mote.vy += season === "winter" ? 0.016 : 0.035;
+            mote.rot += mote.vr;
+            mote.life -= season === "winter" ? 0.01 : 0.016;
+          } else {
+            const sway =
+              season === "winter"
+                ? Math.sin(frame * 0.007 + mote.rot) * (0.12 + mote.size * 0.09)
+                : season === "summer"
+                  ? Math.sin(frame * 0.012 + mote.rot) * 0.4
+                  : Math.sin(frame * 0.02 + mote.rot) * 0.45;
+            const wind = season === "winter" ? Math.sin(frame * 0.003) * 0.28 : 0;
+            mote.x += mote.vx * gust + sway + wind;
+            mote.y += mote.vy;
+            mote.rot += mote.vr;
           }
         }
         if (mote.life <= 0) {
@@ -343,7 +452,11 @@ export function SeasonField({ season }: { season: Season }) {
             mote.y = -20;
           }
         }
-        drawMote(ctx!, season, mote);
+        if (mote.burst && season === "winter") {
+          drawFlake(burstCtx!, mote);
+        } else {
+          drawMote(ctx!, season, mote);
+        }
       }
       raf = window.requestAnimationFrame(step);
     }
@@ -360,8 +473,11 @@ export function SeasonField({ season }: { season: Season }) {
   }, [season]);
 
   return (
-    <div className={`season-sky ${season}`} aria-hidden="true">
-      <canvas ref={canvasRef} className="season-field" />
-    </div>
+    <>
+      <div className={`season-sky ${season}`} aria-hidden="true">
+        <canvas ref={canvasRef} className="season-field" />
+      </div>
+      <canvas ref={burstRef} className="season-burst" aria-hidden="true" />
+    </>
   );
 }

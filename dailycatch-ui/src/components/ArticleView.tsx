@@ -36,7 +36,7 @@ export function ArticleView({
         <span>{lesson.topic}</span>
         <span>{words} words</span>
       </p>
-      <h2>{lesson.title}</h2>
+      <h2 className="article-title">{lesson.title}</h2>
       <p className="hint">Click a highlighted word.</p>
       {lesson.paragraphs.map((paragraph, index) => (
         <div className="paragraph-block" key={paragraph}>

@@ -14,7 +14,7 @@ export function HotTopicView({
       <p className="kicker">
         <span>Hot topic</span>
       </p>
-      <h2>{topic.title}</h2>
+      <h2 className="hot-title">{topic.title}</h2>
       <p className="paragraph">{topic.overview}</p>
       <div className="quotes">
         {topic.quotes.map((quote, index) => (
