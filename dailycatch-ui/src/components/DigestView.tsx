@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import type { Digest, Detail, HotTopic } from "../types";
+import type { Digest } from "../types";
 import { ArticleView } from "./ArticleView";
 import { IconBook, IconEye, IconEyeOff, IconLanguage } from "./Icons";
 import { HotTopicView } from "./HotTopicView";
-import { Preview } from "./Preview";
 import { lookup, WordPopCard } from "./Vocabulary";
 
 type WordPop = {
@@ -19,17 +18,11 @@ type DigestViewProps = {
 export function DigestView({ digest }: DigestViewProps) {
   const [showTranslation, setShowTranslation] = useState(false);
   const [showVocabulary, setShowVocabulary] = useState(false);
-  const [detail, setDetail] = useState<Detail>(null);
   const [pop, setPop] = useState<WordPop | null>(null);
-  const [quoteTopic, setQuoteTopic] = useState<HotTopic | null>(null);
-  const [openQuote, setOpenQuote] = useState<number | null>(null);
   const allOpen = showTranslation && showVocabulary;
 
   useEffect(() => {
-    setDetail(null);
     setPop(null);
-    setQuoteTopic(null);
-    setOpenQuote(null);
   }, [digest.date]);
 
   useEffect(() => {
@@ -58,7 +51,6 @@ export function DigestView({ digest }: DigestViewProps) {
         setShowTranslation((current) => !current);
       }
       if (event.key === "Escape") {
-        setDetail(null);
         setPop(null);
       }
     }
@@ -84,8 +76,40 @@ export function DigestView({ digest }: DigestViewProps) {
     setPop({ word, x: left, y: top });
   }
 
+  const controls = (
+    <div className="composer" role="group" aria-label="Reading tools">
+      <button
+        type="button"
+        className="pill"
+        aria-pressed={showTranslation}
+        onClick={() => setShowTranslation((current) => !current)}
+      >
+        {showTranslation ? <IconEyeOff /> : <IconLanguage />}
+        <span>{showTranslation ? "Hide Translation" : "Show Translation"}</span>
+      </button>
+      <button
+        type="button"
+        className="pill"
+        aria-pressed={showVocabulary}
+        onClick={() => setShowVocabulary((current) => !current)}
+      >
+        {showVocabulary ? <IconEyeOff /> : <IconBook />}
+        <span>{showVocabulary ? "Hide Vocabulary" : "Show Vocabulary"}</span>
+      </button>
+      <button
+        type="button"
+        className="pill pill-primary"
+        aria-pressed={allOpen}
+        onClick={() => setBoth(!allOpen)}
+      >
+        {allOpen ? <IconEyeOff /> : <IconEye />}
+        <span>{allOpen ? "English Only" : "Show All"}</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div className={detail ? "reader-shell with-preview" : "reader-shell"}>
+    <div className="reader-shell">
       <div className="transcript">
         <div className="reader">
           <ArticleView
@@ -95,58 +119,18 @@ export function DigestView({ digest }: DigestViewProps) {
             showVocabulary={showVocabulary}
             picked={pickedWord}
             onPick={(word, anchor) => placePop(word, anchor)}
+            controls={controls}
           />
-          {digest.hot_topics.map((topic) => (
-            <HotTopicView
-              key={topic.id}
-              topic={topic}
-              openQuote={quoteTopic?.id === topic.id ? openQuote : null}
-              onQuote={(index) => {
-                setQuoteTopic(topic);
-                setOpenQuote(openQuote === index && quoteTopic?.id === topic.id ? null : index);
-                setDetail({ kind: "quote", index });
-              }}
-            />
-          ))}
-        </div>
-        <div className="composer" role="group" aria-label="Reading tools">
-          <button
-            type="button"
-            className="pill"
-            aria-pressed={showTranslation}
-            onClick={() => setShowTranslation((current) => !current)}
-          >
-            {showTranslation ? <IconEyeOff /> : <IconLanguage />}
-            <span>{showTranslation ? "Hide Translation" : "Show Translation"}</span>
-          </button>
-          <button
-            type="button"
-            className="pill"
-            aria-pressed={showVocabulary}
-            onClick={() => setShowVocabulary((current) => !current)}
-          >
-            {showVocabulary ? <IconEyeOff /> : <IconBook />}
-            <span>{showVocabulary ? "Hide Vocabulary" : "Show Vocabulary"}</span>
-          </button>
-          <button
-            type="button"
-            className="pill pill-primary"
-            aria-pressed={!allOpen}
-            onClick={() => setBoth(!allOpen)}
-          >
-            {allOpen ? <IconEyeOff /> : <IconEye />}
-            <span>{allOpen ? "English Only" : "Show All"}</span>
-          </button>
+          {digest.hot_topics.length > 0 && (
+            <section className="hot-topics">
+              <h2 className="section-label">Hot Topics</h2>
+              {digest.hot_topics.map((topic) => (
+                <HotTopicView key={topic.id} topic={topic} />
+              ))}
+            </section>
+          )}
         </div>
       </div>
-      <aside className={detail ? "preview open" : "preview"} aria-label="Detail">
-        <Preview
-          lesson={digest.lesson}
-          topic={quoteTopic}
-          detail={detail}
-          onClose={() => setDetail(null)}
-        />
-      </aside>
       {pop && digest.lesson && (
         <WordPopCard
           entry={lookup(digest.lesson, pop.word)}

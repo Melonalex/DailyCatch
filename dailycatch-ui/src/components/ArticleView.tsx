@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { wordCount } from "../format";
 import type { Lesson } from "../types";
 import { indexVocabulary, renderWords } from "./Vocabulary";
@@ -16,12 +16,14 @@ export function ArticleView({
   showVocabulary,
   picked,
   onPick,
+  controls,
 }: {
   lesson: Lesson | null;
   showTranslation: boolean;
   showVocabulary: boolean;
   picked: string | null;
   onPick: (word: string | null, anchor?: DOMRect) => void;
+  controls?: ReactNode;
 }) {
   const vocab = useMemo(() => indexVocabulary(lesson?.vocabulary ?? []), [lesson]);
   if (!lesson) {
@@ -37,6 +39,7 @@ export function ArticleView({
         <span>{words} words</span>
       </p>
       <h2 className="article-title">{lesson.title}</h2>
+      {controls}
       <p className="hint">Click a highlighted word.</p>
       {lesson.paragraphs.map((paragraph, index) => (
         <div className="paragraph-block" key={paragraph}>
