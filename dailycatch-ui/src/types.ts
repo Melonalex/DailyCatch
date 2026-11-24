@@ -37,8 +37,6 @@ export type Digest = {
   hot_topics: HotTopic[];
 };
 
-export type Pane = { kind: "article" } | { kind: "topic"; id: number };
-
 export type IssueSummary = {
   date: string;
   title: string | null;
@@ -46,8 +44,3 @@ export type IssueSummary = {
   difficulty: string | null;
   topic: string | null;
 };
-
-export type Detail =
-  | { kind: "paragraph"; index: number }
-  | { kind: "quote"; index: number }
-  | null;

@@ -1,33 +1,5 @@
 type IconProps = { className?: string };
 
-export function IconMark({ className }: IconProps) {
-  return (
-    <svg className={className ?? "icon"} viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="3" width="5" height="18" rx="1" fill="currentColor" />
-      <rect x="11" y="6" width="10" height="2" rx="1" fill="currentColor" />
-      <rect x="11" y="11" width="8" height="2" rx="1" fill="currentColor" opacity="0.7" />
-      <rect x="11" y="16" width="6" height="2" rx="1" fill="currentColor" opacity="0.45" />
-    </svg>
-  );
-}
-
-export function IconSun({ className }: IconProps) {
-  return (
-    <svg className={className ?? "icon"} viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5 5l1.6 1.6M17.4 17.4 19 19M19 5l-1.6 1.6M6.6 17.4 5 19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function IconMoon({ className }: IconProps) {
-  return (
-    <svg className={className ?? "icon"} viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M16 3.2A8.5 8.5 0 1 0 20.8 14 7 7 0 0 1 16 3.2Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function IconMenu({ className }: IconProps) {
   return (
     <svg className={className ?? "icon"} viewBox="0 0 24 24" aria-hidden="true">

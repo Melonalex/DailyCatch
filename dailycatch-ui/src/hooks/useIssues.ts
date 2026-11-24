@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { fetchDates, fetchDigest } from "../api";
-import type { Digest, IssueSummary, Pane } from "../types";
+import type { Digest, IssueSummary } from "../types";
 
 export function useIssues() {
   const [issues, setIssues] = useState<IssueSummary[]>([]);
   const [datesLoaded, setDatesLoaded] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [digest, setDigest] = useState<Digest | null>(null);
-  const [pane, setPane] = useState<Pane>({ kind: "article" });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,7 +38,6 @@ export function useIssues() {
     }
     let active = true;
     setDigest(null);
-    setPane({ kind: "article" });
     setError(null);
     fetchDigest(selected)
       .then((value) => {
@@ -65,8 +63,6 @@ export function useIssues() {
     selected,
     setSelected,
     digest,
-    pane,
-    setPane,
     error,
     ready,
   };
