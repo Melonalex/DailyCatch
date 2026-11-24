@@ -1,2 +1,2 @@
 # The daily fetch is scheduled inside the API process at 07:00 Asia/Shanghai.
-# Do not add a crontab entry for fetcher.main.
+# Do not add a crontab entry for the fetch.

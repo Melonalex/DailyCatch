@@ -6,16 +6,17 @@ There is no application login. Put the site behind nginx basic auth. It is meant
 
 ## Layout
 
-- `dailycatch/` — fetcher CLI and FastAPI app
+- `server/` — Go API and fetch command
+- `dailycatch/` — `.env` configuration
 - `dailycatch-ui/` — React single page
 - `deploy/` — nginx, cron, and systemd examples
-- `schema.sql` — applied automatically when the fetcher or API starts
+- `schema.sql` — applied automatically when the server or `dailycatch fetch` starts
 
-Run Python commands from the `dailycatch` directory so `fetcher`, `api`, and `common` import cleanly.
+Run Go commands from the `server` directory. The process looks upward from the working directory for `dailycatch/.env` and `schema.sql`.
 
 ## Local development (Windows)
 
-Requirements: Python 3.11+, Node.js 18+, and MySQL 8.
+Requirements: Go 1.25+, Node.js 18+, and MySQL 8.
 
 ### 1. MySQL
 
@@ -59,28 +60,29 @@ Fill in `.env`. Never commit it.
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MySQL connection |
 | `RSS_FEEDS` | Comma-separated `Name\|url` entries |
 
-The default feeds are BBC World and The Guardian Tech. The fetcher keeps 10 Hacker News stories that have a URL, and up to 5 entries per feed from the last 48 hours.
+The default feeds are BBC World and The Guardian Tech. The fetch keeps 10 Hacker News stories that have a URL, and up to 5 entries per feed from the last 48 hours.
 
-### 3. Fetcher
+### 3. Fetch
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python -m fetcher.main --no-ai
-.\.venv\Scripts\python -m fetcher.main
+cd ..\server
+go run ./cmd/dailycatch fetch --no-ai
+go run ./cmd/dailycatch fetch
 ```
 
 `--date YYYY-MM-DD` selects a digest date. The default is today in Asia/Shanghai. `--no-ai` skips DeepSeek and works with no API key.
 
-The run deletes that date's news rows first, then inserts each item in its own transaction. One DeepSeek call then writes the medium-short piece and hot topics. The article type rotates across IELTS 6.5-7.5, everyday English, technology, and a news brief, and the same date keeps its type when the job is run again. A failed model call keeps the previous lesson. The process prints `stored hackernews=N rss=N lesson=ok|failed|skipped hot_topics=N`. Exit code 0 means at least one news row was stored. Exit code 1 means nothing was stored.
+The run deletes that date's news rows first, then inserts each item in its own transaction. DeepSeek then writes the medium-short piece and hot topics. If the piece is under its word minimum, the same request is sent once more. The article type rotates across IELTS 6.5-7.5, everyday English, technology, and a news brief, and the same date keeps its type when the job is run again. A failed model call keeps the previous lesson. The process prints `stored hackernews=N rss=N lesson=ok|failed|skipped hot_topics=N`. Exit code 0 means at least one news row was stored. Exit code 1 means nothing was stored.
 
 Running the same date again replaces those rows. It does not create duplicates.
 
 ### 4. API
 
 ```powershell
-.\.venv\Scripts\python -m uvicorn api.main:app --host 127.0.0.1 --port 8000
+go run ./cmd/dailycatch
 ```
+
+The process listens on `127.0.0.1:8000`.
 
 - `GET /api/health` → `{"status":"ok"}`
 - `GET /api/dates` → issues newest first, each with `date`, `title`, `article_type`, `difficulty`, and `topic`
@@ -100,30 +102,30 @@ Open `http://127.0.0.1:5173`. The dev server proxies `/api` to `127.0.0.1:8000`.
 
 ## Deploy on a server
 
-These steps assume a Linux host with Python 3.11+, Node.js 18+, MySQL 8, and nginx. The clock should be Asia/Shanghai so the 07:00 cron line matches the digest date.
+These steps assume a Linux host with Go 1.25+, Node.js 18+, MySQL 8, and nginx. The clock should be Asia/Shanghai so the 07:00 schedule matches the digest date.
 
 ### 1. Packages and database
 
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip nginx apache2-utils
+sudo apt install -y nginx apache2-utils
 sudo timedatectl set-timezone Asia/Shanghai
 ```
 
-Create the database and user with the SQL in the local-development section. Use a real password.
+Create the database and user with the SQL in the local-development section. Use a real password. Install Go 1.25 or newer before building the server.
 
 ### 2. Application
 
 ```bash
 sudo mkdir -p /opt/dailycatch /var/log/dailycatch
-sudo rsync -a --exclude .venv --exclude node_modules --exclude dist ./ /opt/dailycatch/
+sudo rsync -a --exclude node_modules --exclude dist ./ /opt/dailycatch/
 cd /opt/dailycatch/dailycatch
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
 cp .env.example .env
 # edit .env: database password and DEEPSEEK_API_KEY
-.venv/bin/python -m fetcher.main --no-ai
-.venv/bin/python -m fetcher.main
+cd /opt/dailycatch/server
+go build -o dailycatch ./cmd/dailycatch
+/opt/dailycatch/server/dailycatch fetch --no-ai
+/opt/dailycatch/server/dailycatch fetch
 ```
 
 ### 3. API service
@@ -135,7 +137,7 @@ sudo systemctl enable --now dailycatch-api
 curl -s http://127.0.0.1:8000/api/health
 ```
 
-The unit listens on `127.0.0.1:8000` only. The app reads `/opt/dailycatch/dailycatch/.env` itself.
+The unit runs `/opt/dailycatch/server/dailycatch` and listens on `127.0.0.1:8000` only. The app reads `/opt/dailycatch/dailycatch/.env` itself.
 
 ### 4. Frontend build
 
@@ -168,7 +170,7 @@ curl -s -u reader http://127.0.0.1:8080/api/dates
 
 ### 6. Morning job
 
-The API process schedules the fetch. At 07:00 Asia/Shanghai it runs the same collection as `python -m fetcher.main` and writes MySQL directly. It does not call the HTTP API. If the process starts after 07:00 and today has no lesson yet, it runs once immediately. A later restart the same day does not regenerate an existing lesson. Keep `dailycatch-api` running; the job stops when that process stops.
+The API process schedules the fetch. At 07:00 Asia/Shanghai it runs the same collection as `dailycatch fetch` and writes MySQL directly. It does not call the HTTP API. If the process starts after 07:00 and today has no lesson yet, it runs once immediately. A later restart the same day does not regenerate an existing lesson. Keep `dailycatch-api` running; the job stops when that process stops.
 
 ## Check for non-English source text
 
@@ -177,10 +179,7 @@ From the repository root, excluding dependencies:
 ```bash
 grep -rP "[\x{4e00}-\x{9fff}]" . \
   --exclude-dir=node_modules \
-  --exclude-dir=dist \
-  --exclude-dir=.venv \
-  --exclude-dir=venv \
-  --exclude-dir=__pycache__
+  --exclude-dir=dist
 ```
 
 The command should print nothing.
