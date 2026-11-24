@@ -13,7 +13,7 @@ export async function fetchDates(): Promise<IssueSummary[]> {
 }
 
 export async function fetchDigest(digestDate: string): Promise<Digest> {
-  const response = await fetch(`/api/digests/${digestDate}`);
+  const response = await fetch(`/api/digests/${digestDate.replace(/-/g, "")}`);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const detail = body && typeof body.detail === "string" ? body.detail : "";

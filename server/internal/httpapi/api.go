@@ -26,7 +26,7 @@ func New(db *sql.DB) http.Handler {
 		writeJSON(w, http.StatusOK, issues)
 	})
 	mux.HandleFunc("GET /api/digests/{date}", func(w http.ResponseWriter, r *http.Request) {
-		day, err := time.Parse("2006-01-02", r.PathValue("date"))
+		day, err := time.Parse("20060102", r.PathValue("date"))
 		if err != nil {
 			http.Error(w, "Invalid date", http.StatusBadRequest)
 			return

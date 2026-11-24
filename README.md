@@ -86,7 +86,7 @@ The process listens on `127.0.0.1:8000`.
 
 - `GET /api/health` → `{"status":"ok"}`
 - `GET /api/dates` → issues newest first, each with `date`, `title`, `article_type`, `difficulty`, and `topic`
-- `GET /api/digests/YYYY-MM-DD` → `date`, `lesson`, `hot_topics`, and `items`, or 404 when that date has none of them
+- `GET /api/digests/YYYYMMDD` → `date`, `lesson`, `hot_topics`, and `items`, or 404 when that date has none of them. The path has no dashes. The `date` field in the JSON stays `YYYY-MM-DD`.
 
 There is no CORS and no application auth. The API is read-only.
 
