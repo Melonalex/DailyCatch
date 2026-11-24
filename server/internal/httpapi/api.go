@@ -26,6 +26,7 @@ func New(db *sql.DB) http.Handler {
 		writeJSON(w, http.StatusOK, issues)
 	})
 	mux.HandleFunc("GET /api/digests/{date}", func(w http.ResponseWriter, r *http.Request) {
+		// The path is YYYYMMDD. The JSON date field stays YYYY-MM-DD.
 		day, err := time.Parse("20060102", r.PathValue("date"))
 		if err != nil {
 			http.Error(w, "Invalid date", http.StatusBadRequest)

@@ -27,8 +27,11 @@ type Settings struct {
 	SchemaPath  string
 }
 
+// Load reads server/.env and schema.sql. It walks up from the working
+// directory, so both `go run` inside server/ and the systemd unit at the
+// repository root find the same files.
 func Load() (Settings, error) {
-	envPath, err := find("dailycatch", ".env")
+	envPath, err := find("server", ".env")
 	if err != nil {
 		return Settings{}, err
 	}

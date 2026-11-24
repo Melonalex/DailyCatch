@@ -45,6 +45,7 @@ func main() {
 
 func runFetch(args []string) int {
 	flags := flag.NewFlagSet("fetch", flag.ContinueOnError)
+	// The CLI keeps dashed dates. Only the HTTP path uses YYYYMMDD.
 	dateFlag := flags.String("date", "", "Digest date YYYY-MM-DD (default: today in Asia/Shanghai)")
 	noAI := flags.Bool("no-ai", false, "Skip DeepSeek")
 	if err := flags.Parse(args); err != nil {

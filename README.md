@@ -6,13 +6,12 @@ There is no application login. Put the site behind nginx basic auth. It is meant
 
 ## Layout
 
-- `server/` — Go API and fetch command
-- `dailycatch/` — `.env` configuration
+- `server/` — Go API, fetch command, and `.env`
 - `dailycatch-ui/` — React single page
 - `deploy/` — nginx, cron, and systemd examples
 - `schema.sql` — applied automatically when the server or `dailycatch fetch` starts
 
-Run Go commands from the `server` directory. The process looks upward from the working directory for `dailycatch/.env` and `schema.sql`.
+Run Go commands from the `server` directory. The process looks upward from the working directory for `server/.env` and `schema.sql`.
 
 ## Local development (Windows)
 
@@ -48,7 +47,7 @@ docker run -d --name dailycatch-mysql --restart unless-stopped `
 ### 2. Configuration
 
 ```powershell
-cd dailycatch
+cd server
 Copy-Item .env.example .env
 ```
 
@@ -119,10 +118,9 @@ Create the database and user with the SQL in the local-development section. Use 
 ```bash
 sudo mkdir -p /opt/dailycatch /var/log/dailycatch
 sudo rsync -a --exclude node_modules --exclude dist ./ /opt/dailycatch/
-cd /opt/dailycatch/dailycatch
+cd /opt/dailycatch/server
 cp .env.example .env
 # edit .env: database password and DEEPSEEK_API_KEY
-cd /opt/dailycatch/server
 go build -o dailycatch ./cmd/dailycatch
 /opt/dailycatch/server/dailycatch fetch --no-ai
 /opt/dailycatch/server/dailycatch fetch
@@ -137,7 +135,7 @@ sudo systemctl enable --now dailycatch-api
 curl -s http://127.0.0.1:8000/api/health
 ```
 
-The unit runs `/opt/dailycatch/server/dailycatch` and listens on `127.0.0.1:8000` only. The app reads `/opt/dailycatch/dailycatch/.env` itself.
+The unit runs `/opt/dailycatch/server/dailycatch` and listens on `127.0.0.1:8000` only. The app reads `/opt/dailycatch/server/.env` itself.
 
 ### 4. Frontend build
 

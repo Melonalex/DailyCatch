@@ -13,6 +13,7 @@ export async function fetchDates(): Promise<IssueSummary[]> {
 }
 
 export async function fetchDigest(digestDate: string): Promise<Digest> {
+  // Issue dates from /api/dates use dashes. The digest path does not.
   const response = await fetch(`/api/digests/${digestDate.replace(/-/g, "")}`);
   if (!response.ok) {
     const body = await response.json().catch(() => null);
