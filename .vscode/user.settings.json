@@ -1,0 +1,62 @@
+{
+    "trae.network.proxy.effectiveMode": "system",
+    "window.zoomLevel": 0.6,
+	"files.autoSave": "afterDelay",
+    "window.autoDetectColorScheme": false,
+
+    "markdown.preview.fontFamily": "Consolas, 'Microsoft YaHei'",
+    "markdown.preview.fontSize": 14,
+    "workbench.editorAssociations": {
+        "*.md": "vscode.markdown.preview.editor"
+    },
+    "editor.unicodeHighlight.nonBasicASCII": false,
+    "editor.multiCursorModifier": "alt",
+    "editor.fontFamily": "Consolas, 'Courier New', monospace",
+    "editor.fontSize": 14,
+    "editor.lineHeight": 1.5,
+    "editor.minimap.renderCharacters": true,
+    "terminal.integrated.fontFamily": "Consolas",
+    "terminal.integrated.fontSize": 14,
+    "terminal.integrated.lineHeight": 1.2,
+    "terminal.integrated.defaultProfile.windows": "PowerShell-UTF8",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell-UTF8": {
+            "path": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+            "args": [
+                "-NoLogo",
+                "-NoExit",
+                "-Command",
+                "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$OutputEncoding=[System.Text.Encoding]::UTF8"
+            ]
+        }
+    },
+    "editor.minimap.enabled": true,
+    "redhat.telemetry.enabled": true,
+    "diffEditor.ignoreTrimWhitespace": true,
+    "window.restoreWindows": "all",
+    "workbench.startupEditor": "none",
+    "git.openRepositoryInParentFolders": "always",
+    "trae.tab.enableSmartEdit": false,
+    "workbench.colorTheme": "Visual Studio Light",
+    "agentWindow.autoDetectColorScheme": true,
+    "agentWindow.colorTheme": "Dark",
+    "chat.fontFamily": "'JetBrains Mono', Consolas, monospace",
+    "explorer.confirmDelete": false,
+    "problems.decorations.enabled": false,
+    "problems.visibility": false,
+    "workbench.editor.enablePreview": false,
+    "editor.unicodeHighlight.ambiguousCharacters": false,
+    "AI.ide.computerUse.everInstalled": true,
+    "diffEditor.renderSideBySide": false,
+    "window.startupWindowType": "system",
+    "trae.linkOpen.localUrlTarget": "integrated",
+    "trae.linkOpen.feishuDocTarget": "integrated",
+    "AI.agent.v2.browserAutomationMode": "default",
+    "trae.floatingChat.buttonIcon": "traebao",
+    "trae.floatingChat.enabled": false,
+    "go.alternateTools": {
+        "gopls": "trae-gopls"
+    },
+    "AI.agent.v2.browserChromeEnabled": "auto",
+    "clangd.path": "c:\\Users\\Yan\\AppData\\Roaming\\Trae CN\\User\\globalStorage\\llvm-vs-code-extensions.vscode-clangd\\install\\23.1.0\\clangd_23.1.0\\bin\\clangd.exe",
+}
